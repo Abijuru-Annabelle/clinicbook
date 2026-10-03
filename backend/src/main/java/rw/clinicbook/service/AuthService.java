@@ -13,6 +13,7 @@ import rw.clinicbook.dto.LoginRequest;
 import rw.clinicbook.dto.RegisterRequest;
 import rw.clinicbook.dto.UserDto;
 import rw.clinicbook.exception.ApiException;
+import rw.clinicbook.messaging.Notifier;
 import rw.clinicbook.repository.DoctorRepository;
 import rw.clinicbook.repository.PatientRepository;
 import rw.clinicbook.repository.UserRepository;
@@ -25,14 +26,16 @@ public class AuthService {
     private final DoctorRepository doctors;
     private final PasswordEncoder encoder;
     private final TokenService tokens;
+    private final Notifier notifier;
 
     public AuthService(UserRepository users, PatientRepository patients, DoctorRepository doctors,
-                       PasswordEncoder encoder, TokenService tokens) {
+                       PasswordEncoder encoder, TokenService tokens, Notifier notifier) {
         this.users = users;
         this.patients = patients;
         this.doctors = doctors;
         this.encoder = encoder;
         this.tokens = tokens;
+        this.notifier = notifier;
     }
 
     /** Self-registration always creates a PATIENT. Doctors/admins are created by an admin. */
@@ -50,6 +53,8 @@ public class AuthService {
         user.setRole(Role.PATIENT);
         users.save(user);
         patients.save(new Patient(user));
+        notifier.send("user.registered", user, "Welcome to ClinicBook",
+                "Your account is ready. You can now book appointments online.");
 
         return new AuthResponse(tokens.issue(user), toDto(user));
     }

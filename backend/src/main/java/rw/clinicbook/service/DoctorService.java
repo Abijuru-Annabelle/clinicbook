@@ -22,6 +22,7 @@ import rw.clinicbook.dto.DoctorRequest;
 import rw.clinicbook.dto.Mapper;
 import rw.clinicbook.dto.SlotDto;
 import rw.clinicbook.exception.ApiException;
+import rw.clinicbook.messaging.Notifier;
 import rw.clinicbook.repository.*;
 
 @Service
@@ -36,10 +37,12 @@ public class DoctorService {
     private final AppointmentRepository appointments;
     private final PasswordEncoder encoder;
     private final String defaultPassword;
+    private final Notifier notifier;
 
     public DoctorService(DoctorRepository doctors, DepartmentRepository departments, UserRepository users,
                          AvailabilityRepository availability, AppointmentRepository appointments,
-                         PasswordEncoder encoder, @Value("${app.default-doctor-password}") String defaultPassword) {
+                         PasswordEncoder encoder, @Value("${app.default-doctor-password}") String defaultPassword,
+                         Notifier notifier) {
         this.doctors = doctors;
         this.departments = departments;
         this.users = users;
@@ -47,6 +50,7 @@ public class DoctorService {
         this.appointments = appointments;
         this.encoder = encoder;
         this.defaultPassword = defaultPassword;
+        this.notifier = notifier;
     }
 
     /** Cached: the doctor list is read on every search but changes rarely. */
@@ -105,6 +109,9 @@ public class DoctorService {
         doctors.save(doctor);
 
         log.info("Doctor account created for {}", email);
+        notifier.send("doctor.created", user, "Your ClinicBook doctor account",
+                "An account was created for you in " + dept.getName() + ". Log in with " + email
+                        + " and the temporary password " + defaultPassword + ", then set your weekly availability.");
         return Mapper.toDto(doctor);
     }
 

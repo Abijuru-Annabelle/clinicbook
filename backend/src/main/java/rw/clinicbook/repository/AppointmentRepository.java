@@ -38,6 +38,15 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
            """)
     boolean isParticipant(@Param("appointmentId") Long appointmentId, @Param("userId") Long userId);
 
+    @Query("""
+           select a from Appointment a
+           join fetch a.patient p join fetch p.user
+           join fetch a.doctor d join fetch d.user
+           where a.status = rw.clinicbook.domain.AppointmentStatus.BOOKED
+             and a.startTime >= :from and a.startTime < :to
+           """)
+    List<Appointment> findBookedStartingBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
     @Query("select a.patient.id from Appointment a where a.id = :appointmentId")
     Optional<Long> findPatientId(@Param("appointmentId") Long appointmentId);
 }

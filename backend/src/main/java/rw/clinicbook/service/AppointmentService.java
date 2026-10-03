@@ -15,6 +15,7 @@ import rw.clinicbook.dto.BookRequest;
 import rw.clinicbook.dto.Mapper;
 import rw.clinicbook.dto.StatusRequest;
 import rw.clinicbook.exception.ApiException;
+import rw.clinicbook.messaging.Notifier;
 import rw.clinicbook.repository.AppointmentRepository;
 import rw.clinicbook.repository.DoctorRepository;
 import rw.clinicbook.repository.PatientRepository;
@@ -28,13 +29,15 @@ public class AppointmentService {
     private final PatientRepository patients;
     private final DoctorRepository doctors;
     private final DoctorService doctorService;
+    private final Notifier notifier;
 
     public AppointmentService(AppointmentRepository appointments, PatientRepository patients,
-                              DoctorRepository doctors, DoctorService doctorService) {
+                              DoctorRepository doctors, DoctorService doctorService, Notifier notifier) {
         this.appointments = appointments;
         this.patients = patients;
         this.doctors = doctors;
         this.doctorService = doctorService;
+        this.notifier = notifier;
     }
 
     // ---------- Patient actions ----------
@@ -52,6 +55,10 @@ public class AppointmentService {
         a.setEndTime(req.startTime().plusMinutes(doctor.getSlotMinutes()));
         a.setReason(req.reason() == null ? null : req.reason().trim());
         saveOrConflict(a);
+        notifyBoth(a, "appointment.booked", "Appointment confirmed",
+                "Your appointment with " + doctorName(a) + " (" + a.getDoctor().getDepartment().getName() + ") is confirmed for "
+                        + Notifier.when(a.getStartTime()) + ". Reference #" + a.getId() + ".",
+                "New appointment: " + patientName(a) + " on " + Notifier.when(a.getStartTime()) + ".");
         return Mapper.toDto(a);
     }
 
@@ -66,6 +73,9 @@ public class AppointmentService {
         Appointment a = ownedByPatient(userId, id);
         requireChangeable(a, "cancelled");
         a.setStatus(AppointmentStatus.CANCELLED);
+        notifyBoth(a, "appointment.cancelled", "Appointment cancelled",
+                "Your appointment with " + doctorName(a) + " on " + Notifier.when(a.getStartTime()) + " has been cancelled.",
+                patientName(a) + " cancelled the appointment on " + Notifier.when(a.getStartTime()) + ".");
         return Mapper.toDto(a);
     }
 
@@ -77,6 +87,9 @@ public class AppointmentService {
         a.setStartTime(newStart);
         a.setEndTime(newStart.plusMinutes(a.getDoctor().getSlotMinutes()));
         saveOrConflict(a);
+        notifyBoth(a, "appointment.rescheduled", "Appointment rescheduled",
+                "Your appointment with " + doctorName(a) + " has been moved to " + Notifier.when(newStart) + ".",
+                patientName(a) + " moved their appointment to " + Notifier.when(newStart) + ".");
         return Mapper.toDto(a);
     }
 
@@ -99,10 +112,29 @@ public class AppointmentService {
             throw ApiException.badRequest("Status must be COMPLETED or NO_SHOW");
         a.setStatus(req.status());
         if (req.notes() != null && !req.notes().isBlank()) a.setNotes(req.notes().trim());
+        if (req.status() == AppointmentStatus.COMPLETED) {
+            notifier.send("appointment.completed", a.getPatient().getUser(), "Thank you for your visit",
+                    "Thank you for visiting " + doctorName(a) + "."
+                            + (a.getNotes() != null ? " Doctor's note: " + a.getNotes() : ""));
+        }
         return Mapper.toDto(a);
     }
 
     // ---------- Helpers ----------
+
+    /** One event for the patient (email + SMS) and one for the doctor. */
+    private void notifyBoth(Appointment a, String type, String subject, String patientMessage, String doctorMessage) {
+        notifier.send(type, a.getPatient().getUser(), subject, patientMessage);
+        notifier.send(type, a.getDoctor().getUser(), subject, doctorMessage);
+    }
+
+    private static String doctorName(Appointment a) {
+        return a.getDoctor().getUser().getFullName();
+    }
+
+    private static String patientName(Appointment a) {
+        return a.getPatient().getUser().getFullName();
+    }
 
     Patient currentPatient(Long userId) {
         return patients.findByUserId(userId).orElseThrow(() -> ApiException.forbidden("Only patients can do this"));
