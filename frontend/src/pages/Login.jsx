@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import AuthShell from '../components/AuthShell'
 import { Alert } from '../components/ui'
 import { useAuth } from '../context/auth'
@@ -13,6 +13,9 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [params] = useSearchParams()
+  const urlError = params.get('error')
+  const googleError = urlError === 'google' ? 'Google sign-in failed or was cancelled. Please try again.' : urlError
 
   const update = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -43,7 +46,7 @@ export default function Login() {
   return (
     <AuthShell title="Welcome back" subtitle="Log in to manage your appointments.">
       <div className="space-y-4">
-        <Alert>{error}</Alert>
+        <Alert>{error || googleError}</Alert>
 
         <button type="button" onClick={onGoogle} className={btn.google}>
           <svg className="h-5 w-5" viewBox="0 0 48 48" aria-hidden="true">

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import DocumentsPanel from '../components/DocumentsPanel'
 import { Alert, EmptyState, PageHeader, Spinner, StatusBadge } from '../components/ui'
 import { appointmentApi } from '../api/services'
 import { canChange, errMsg, fmtDate, fmtTime, parseLocal } from '../utils/format'
@@ -13,6 +14,7 @@ export default function MyAppointments() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [now] = useState(() => new Date())
+  const [openFiles, setOpenFiles] = useState(null)
 
   useEffect(() => {
     appointmentApi
@@ -40,13 +42,23 @@ export default function MyAppointments() {
     }
   }
 
-  const renderActions = (a) =>
-    canChange(a) ? (
-      <div className="flex gap-2">
-        <Link to={`/book/${a.doctorId}?reschedule=${a.id}`} className={`${btn.secondary} px-3 py-1.5`}>Reschedule</Link>
-        <button onClick={() => onCancel(a)} className={`${btn.danger} px-3 py-1.5`}>Cancel</button>
-      </div>
-    ) : null
+  const toggleFiles = (id) => setOpenFiles((cur) => (cur === id ? null : id))
+
+  const renderActions = (a) => (
+    <div className="flex flex-wrap justify-end gap-2">
+      {a.status !== 'CANCELLED' && (
+        <button onClick={() => toggleFiles(a.id)} className={`${btn.secondary} px-3 py-1.5`}>
+          {openFiles === a.id ? 'Hide files' : 'Files'}
+        </button>
+      )}
+      {canChange(a) && (
+        <>
+          <Link to={`/book/${a.doctorId}?reschedule=${a.id}`} className={`${btn.secondary} px-3 py-1.5`}>Reschedule</Link>
+          <button onClick={() => onCancel(a)} className={`${btn.danger} px-3 py-1.5`}>Cancel</button>
+        </>
+      )}
+    </div>
+  )
 
   const tabClass = (t) =>
     `cursor-pointer rounded-md px-4 py-1.5 text-sm font-medium ${tab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`
@@ -87,7 +99,8 @@ export default function MyAppointments() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {list.map((a) => (
-                  <tr key={a.id}>
+                  <Fragment key={a.id}>
+                  <tr>
                     <td className="px-4 py-3">
                       <p className="font-medium">{fmtDate(a.startTime)}</p>
                       <p className="text-slate-500">{fmtTime(a.startTime)} – {fmtTime(a.endTime)}</p>
@@ -103,6 +116,14 @@ export default function MyAppointments() {
                     <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
                     <td className="px-4 py-3 text-right">{renderActions(a)}</td>
                   </tr>
+                  {openFiles === a.id && (
+                    <tr>
+                      <td colSpan={5} className="px-4 pb-4">
+                        <DocumentsPanel appointmentId={a.id} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -124,6 +145,11 @@ export default function MyAppointments() {
                 {a.reason && <p className="mt-2 text-sm text-slate-600">{a.reason}</p>}
                 {a.notes && <p className="mt-1 text-xs text-slate-400">Doctor's note: {a.notes}</p>}
                 <div className="mt-3">{renderActions(a)}</div>
+                {openFiles === a.id && (
+                  <div className="mt-3">
+                    <DocumentsPanel appointmentId={a.id} />
+                  </div>
+                )}
               </article>
             ))}
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import DocumentsPanel from '../components/DocumentsPanel'
 import { Alert, EmptyState, PageHeader, Spinner, StatusBadge } from '../components/ui'
 import { appointmentApi, doctorSelfApi } from '../api/services'
 import { DAYS, errMsg, fmtDate, fmtTime, todayStr } from '../utils/format'
@@ -15,6 +16,7 @@ export default function DoctorDashboard() {
   const [form, setForm] = useState({ dayOfWeek: '1', startTime: '08:00', endTime: '12:00' })
 
   const [error, setError] = useState('')
+  const [openFiles, setOpenFiles] = useState(null)
 
   useEffect(() => {
     doctorSelfApi
@@ -100,23 +102,37 @@ export default function DoctorDashboard() {
           ) : (
             <ol className="space-y-3">
               {schedule.map((a) => (
-                <li key={a.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
-                  <div className="w-24 shrink-0">
-                    <p className="text-lg font-bold text-teal-700">{fmtTime(a.startTime)}</p>
-                    <p className="text-xs text-slate-400">to {fmtTime(a.endTime)}</p>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold">{a.patientName}</p>
-                      <StatusBadge status={a.status} />
+                <li key={a.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="w-24 shrink-0">
+                      <p className="text-lg font-bold text-teal-700">{fmtTime(a.startTime)}</p>
+                      <p className="text-xs text-slate-400">to {fmtTime(a.endTime)}</p>
                     </div>
-                    <p className="text-sm text-slate-600">{a.reason || 'No reason given'}</p>
-                    {a.notes && <p className="mt-1 text-xs text-slate-400">Note: {a.notes}</p>}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold">{a.patientName}</p>
+                        <StatusBadge status={a.status} />
+                      </div>
+                      <p className="text-sm text-slate-600">{a.reason || 'No reason given'}</p>
+                      {a.notes && <p className="mt-1 text-xs text-slate-400">Note: {a.notes}</p>}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {a.status !== 'CANCELLED' && (
+                        <button onClick={() => setOpenFiles((cur) => (cur === a.id ? null : a.id))} className={`${btn.secondary} px-3 py-1.5`}>
+                          {openFiles === a.id ? 'Hide files' : 'Files'}
+                        </button>
+                      )}
+                      {a.status === 'BOOKED' && (
+                        <>
+                          <button onClick={() => setStatus(a, 'COMPLETED')} className={`${btn.primary} px-3 py-1.5`}>Complete</button>
+                          <button onClick={() => setStatus(a, 'NO_SHOW')} className={`${btn.secondary} px-3 py-1.5`}>No-show</button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  {a.status === 'BOOKED' && (
-                    <div className="flex gap-2">
-                      <button onClick={() => setStatus(a, 'COMPLETED')} className={`${btn.primary} px-3 py-1.5`}>Complete</button>
-                      <button onClick={() => setStatus(a, 'NO_SHOW')} className={`${btn.secondary} px-3 py-1.5`}>No-show</button>
+                  {openFiles === a.id && (
+                    <div className="mt-3">
+                      <DocumentsPanel appointmentId={a.id} />
                     </div>
                   )}
                 </li>

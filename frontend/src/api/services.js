@@ -44,3 +44,21 @@ export const doctorSelfApi = {
   removeAvailability: (id) =>
     USE_MOCK ? mock.deleteAvailability(id) : data(client.delete(`/doctor/availability/${id}`)),
 }
+
+export const documentApi = {
+  list: (appointmentId) =>
+    USE_MOCK ? mock.listDocuments(appointmentId) : data(client.get(`/appointments/${appointmentId}/documents`)),
+  upload: (appointmentId, file) => {
+    if (USE_MOCK) return mock.uploadDocument(appointmentId, file)
+    const form = new FormData()
+    form.append('file', file)
+    return data(client.post(`/appointments/${appointmentId}/documents`, form))
+  },
+  download: (id) =>
+    USE_MOCK ? mock.downloadDocument() : data(client.get(`/documents/${id}`, { responseType: 'blob', timeout: 30000 })),
+  remove: (id) => (USE_MOCK ? mock.deleteDocument(id) : data(client.delete(`/documents/${id}`))),
+}
+
+export const notificationApi = {
+  mine: () => (USE_MOCK ? mock.myNotifications() : data(client.get('/notifications/me'))),
+}
