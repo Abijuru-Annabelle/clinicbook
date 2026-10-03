@@ -10,6 +10,9 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +49,8 @@ public class DoctorService {
         this.defaultPassword = defaultPassword;
     }
 
+    /** Cached: the doctor list is read on every search but changes rarely. */
+    @Cacheable(value = "doctors", key = "(#search ?: '') + '|' + (#departmentId ?: '')")
     @Transactional(readOnly = true)
     public List<DoctorDto> search(String search, Long departmentId) {
         String q = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
@@ -58,6 +63,7 @@ public class DoctorService {
                 .toList();
     }
 
+    @Cacheable(value = "doctor", key = "#id")
     @Transactional(readOnly = true)
     public DoctorDto get(Long id) {
         return Mapper.toDto(find(id));
@@ -70,6 +76,9 @@ public class DoctorService {
     }
 
     /** Admin creates a doctor + their login account (role DOCTOR). */
+    @Caching(evict = {
+            @CacheEvict(value = "doctors", allEntries = true),
+            @CacheEvict(value = "doctor", allEntries = true)})
     @Transactional
     public DoctorDto create(DoctorRequest req) {
         String email = req.email().trim().toLowerCase(Locale.ROOT);
@@ -100,6 +109,9 @@ public class DoctorService {
     }
 
     /** Soft delete: keeps appointment history, disables the login. */
+    @Caching(evict = {
+            @CacheEvict(value = "doctors", allEntries = true),
+            @CacheEvict(value = "doctor", allEntries = true)})
     @Transactional
     public void delete(Long id) {
         Doctor d = find(id);

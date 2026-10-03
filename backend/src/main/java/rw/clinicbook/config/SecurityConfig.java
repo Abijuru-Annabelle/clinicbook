@@ -8,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -32,12 +33,30 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  *  - Users log in and receive a signed JWT (HS256) as an OAuth2 bearer token.
  *  - Every request is checked by Spring's OAuth2 resource server.
  *  - The "roles" claim becomes ROLE_PATIENT / ROLE_DOCTOR / ROLE_ADMIN for RBAC (@PreAuthorize).
+ *  - "Continue with Google" uses the OAuth2 authorization-code flow (separate filter chain below).
  */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    /** Chain 1: Google OAuth2 login handshake (/oauth2/authorization/google -> Google -> /login/oauth2/code/google). */
     @Bean
+    @Order(1)
+    public SecurityFilterChain googleLogin(HttpSecurity http, GoogleLoginSuccessHandler successHandler,
+                                           @Value("${app.frontend-url}") String frontendUrl) throws Exception {
+        http
+            .securityMatcher("/oauth2/**", "/login/oauth2/**")
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            .oauth2Login(oauth -> oauth
+                .successHandler(successHandler)
+                .failureHandler((request, response, ex) -> response.sendRedirect(frontendUrl + "/login?error=google")));
+        return http.build();
+    }
+
+    /** Chain 2: the REST API, protected by JWT bearer tokens. */
+    @Bean
+    @Order(2)
     public SecurityFilterChain apiSecurity(HttpSecurity http, JwtAuthenticationConverter jwtConverter) throws Exception {
         http
             .csrf(csrf -> csrf.disable()) // safe: no cookies, token sent in Authorization header

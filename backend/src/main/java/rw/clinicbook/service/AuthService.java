@@ -63,6 +63,24 @@ public class AuthService {
         return new AuthResponse(tokens.issue(user), toDto(user));
     }
 
+    /** Called after Google login. Existing accounts sign in; new emails get a PATIENT account. */
+    @Transactional
+    public String loginWithGoogle(String email, String name, boolean emailVerified) {
+        if (email == null || !emailVerified) throw ApiException.unauthorized("Your Google email is not verified");
+        User user = users.findByEmailIgnoreCase(email).orElseGet(() -> {
+            User u = new User();
+            u.setFullName(name == null || name.isBlank() ? email : name);
+            u.setEmail(email.toLowerCase());
+            u.setProvider(AuthProvider.GOOGLE);
+            u.setRole(Role.PATIENT);
+            users.save(u);
+            patients.save(new Patient(u));
+            return u;
+        });
+        if (!user.isEnabled()) throw ApiException.forbidden("This account is disabled");
+        return tokens.issue(user);
+    }
+
     @Transactional(readOnly = true)
     public UserDto me(Long userId) {
         return toDto(users.findById(userId).orElseThrow(() -> ApiException.unauthorized("User not found")));

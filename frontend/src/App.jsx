@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/auth'
@@ -6,11 +7,14 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import OAuthCallback from './pages/OAuthCallback'
-import FindDoctor from './pages/FindDoctor'
-import BookAppointment from './pages/BookAppointment'
-import MyAppointments from './pages/MyAppointments'
-import DoctorDashboard from './pages/DoctorDashboard'
-import AdminDashboard from './pages/AdminDashboard'
+import { Spinner } from './components/ui'
+
+// Performance: each dashboard is downloaded only when the user opens it (code splitting)
+const FindDoctor = lazy(() => import('./pages/FindDoctor'))
+const BookAppointment = lazy(() => import('./pages/BookAppointment'))
+const MyAppointments = lazy(() => import('./pages/MyAppointments'))
+const DoctorDashboard = lazy(() => import('./pages/DoctorDashboard'))
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 import Unauthorized from './pages/Unauthorized'
 import { homeFor } from './utils/format'
 
@@ -19,7 +23,9 @@ function AppLayout() {
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
-        <Outlet />
+        <Suspense fallback={<Spinner />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )

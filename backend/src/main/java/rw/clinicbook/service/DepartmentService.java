@@ -1,6 +1,8 @@
 package rw.clinicbook.service;
 
 import java.util.List;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rw.clinicbook.domain.Department;
@@ -22,11 +24,13 @@ public class DepartmentService {
         this.doctors = doctors;
     }
 
+    @Cacheable("departments")
     @Transactional(readOnly = true)
     public List<DepartmentDto> list() {
         return departments.findAllByOrderByNameAsc().stream().map(Mapper::toDto).toList();
     }
 
+    @CacheEvict(value = "departments", allEntries = true)
     @Transactional
     public DepartmentDto create(DepartmentRequest req) {
         String name = req.name().trim();
@@ -34,6 +38,7 @@ public class DepartmentService {
         return Mapper.toDto(departments.save(new Department(name, req.description())));
     }
 
+    @CacheEvict(value = "departments", allEntries = true)
     @Transactional
     public void delete(Long id) {
         if (!departments.existsById(id)) throw ApiException.notFound("Department not found");
