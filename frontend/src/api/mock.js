@@ -224,3 +224,28 @@ export function deleteAvailability(id) {
   availability = availability.filter((a) => a.id !== id)
   return wait(null)
 }
+
+// ---------- documents (metadata only in demo mode) ----------
+let documents = []
+
+export const listDocuments = (appointmentId) =>
+  wait(documents.filter((d) => d.appointmentId === Number(appointmentId)))
+
+export function uploadDocument(appointmentId, file) {
+  const user = currentUser()
+  const doc = {
+    id: String(nextId++), appointmentId: Number(appointmentId), fileName: file.name, contentType: file.type,
+    size: file.size, uploadedBy: user?.id, uploaderName: user?.fullName, uploadedAt: new Date().toISOString(),
+  }
+  documents = [doc, ...documents]
+  return wait(doc)
+}
+
+export const downloadDocument = () => fail('Downloading files needs the real backend (set VITE_USE_MOCK=false).')
+
+export function deleteDocument(id) {
+  documents = documents.filter((d) => d.id !== id)
+  return wait(null)
+}
+
+export const myNotifications = () => wait([])

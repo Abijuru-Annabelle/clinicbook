@@ -42,6 +42,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Non-relational database: MongoDB (documents + GridFS files, notification logs) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
         <!-- Security: JWT bearer tokens (OAuth2 resource server) + RBAC -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

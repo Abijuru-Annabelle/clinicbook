@@ -13,6 +13,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 
 /** Every error is returned as JSON: { "status": 400, "message": "...", "timestamp": "..." } */
 @RestControllerAdvice
@@ -48,6 +50,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleConflict(DataIntegrityViolationException e) {
         log.warn("Data integrity violation: {}", e.getMostSpecificCause().getMessage());
         return body(HttpStatus.CONFLICT, "This record conflicts with existing data");
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleTooLarge(MaxUploadSizeExceededException e) {
+        return body(HttpStatus.PAYLOAD_TOO_LARGE, "File is larger than 5 MB");
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<Map<String, Object>> handleMultipart(MultipartException e) {
+        return body(HttpStatus.BAD_REQUEST, "Invalid file upload");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
